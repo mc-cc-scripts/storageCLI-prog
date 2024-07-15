@@ -16,24 +16,11 @@ local defaultConfig = {
     },
 }
 
-storageCLI.commands = {
-    ["extract"] = function (itemName, amount)
-        
-    end,
-    ["put"] = function (itemName, amount)
-        
-    end,
-    ["select"] = function (type, peripheral)
-        
-    end
-}
-
 storageCLI.aliases = {
     ["x"] = "extract",
     ["p"] = "put",
-    ["f"] = "search",
-    ["l"] = "list",
-    ["i"] = "items",
+    ["f"] = "find",
+    ["n"] = "network",
     ["s"] = "select",
 }
 
@@ -168,10 +155,55 @@ function storageCLI:listItems(sourceName)
     return nil
 end
 
+-- extraqct item from storage chest to output chest
+function storageCLI:cmdExtract(itemName, amount)
+end
+
+-- put item from input chest to storage chest
+function storageCLI:cmdPut(itemName, amount)
+end
+
+-- select chest types
+function storageCLI:cmdSelect(chestType, peripheral)
+end
+
+-- find items either in storage chest or in given chest type
+function storageCLI:cmdFind(itemName, chestType)
+end
+
+-- list network devices (peripherals)
+function storageCLI:cmdNetwork()
+    local peripherals = self:listPeripherals()
+    -- ...
+end
+
 function storageCLI:run()
     local command
     while true do
-        command = read()
+        local input = read()
+        local inputTable
+        for word in string.gmatch(input, "%S+") do
+            table.insert(inputTable, word)
+        end
+        command = inputTable[1]
+        local arg1 = inputTable[2] or nil
+        local arg2 = inputTable[3] or nil
+
+        if command == "extract" or self.aliases[command] == "extract" then
+            local amount = arg2 and tonumber(arg2) or 1
+            self:cmdExtract(arg1, amount)
+        elseif command == "put" or self.aliases[command] == "put" then
+            local amount = arg2 and tonumber(arg2) or 1
+            self:cmdPut(arg1, amount)
+        elseif command == "select" or self.aliases[command] == "select" then
+            self:cmdSelect(arg1, arg2)
+        elseif command == "find" or self.aliases[command] == "find" then
+            self:cmdFind(arg1, arg2)
+        elseif command == "network" or self.aliases[command] == "network" then
+            self:cmdPeripherals()
+        else
+            print("Invalid command.")
+        end
     end
 end
 
