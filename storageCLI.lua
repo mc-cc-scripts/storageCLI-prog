@@ -53,7 +53,7 @@ function storageCLI:init()
                 print("Connected to " .. self.serverName .. " with protocol: " .. self.protocol)
                 self:detectChests()
             end
-            
+
             self:run()
             rednet.unhost(self.protocol)
         else
@@ -108,9 +108,7 @@ function storageCLI:listPeripherals()
 
     local msg
     while true do
-        local id, prot
-        id, msg, prot = rednet.receive(self.protocol)
-        print(id, msg, prot)
+        _, msg, _ = rednet.receive(self.protocol)
         break
     end
 
@@ -312,7 +310,7 @@ function storageCLI:run()
     local command
     while true do
         local input = read()
-        local inputTable
+        local inputTable = {}
         for word in string.gmatch(input, "%S+") do
             table.insert(inputTable, word)
         end
