@@ -136,7 +136,7 @@ function storageCLI:chestType(name)
     }
 
     if not types[name] then
-        return false, "´" .. name .. "` is not a valid chest type."
+        return false, "`" .. name .. "` is not a valid chest type."
     end
 
     return true, types[name] or nil
