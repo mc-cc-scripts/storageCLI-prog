@@ -14,6 +14,11 @@ local defaultConfig = {
         ["default"] = "storageManager",
         ["type"] = "string"
     },
+    ["timeout"] = {
+        ["description"] = "How many seconds to wait for a response",
+        ["default"] = 5,
+        ["type"] = "number"
+    },
 }
 
 storageCLI.aliases = {
@@ -31,7 +36,8 @@ function storageCLI:init()
         Config:command(args)
     else
         self.protocol = Config:get('protocol')
-        self.serverName = Config:get('serverName')
+        self.host = Config:get('serverName')
+        self.timeout = Config:get('timeout')
         self.inputChest = nil
         self.outputChest = nil
         self.storageChest = nil
@@ -39,7 +45,7 @@ function storageCLI:init()
         peripheral.find("modem", rednet.open)
         if rednet.isOpen() then
             self:prompt()
-            print("Connected to " .. self.serverName .. " with protocol: " .. self.protocol)
+            print("Connected to " .. self.host .. " with protocol: " .. self.protocol)
             self:detectChests()
             self:run()
             rednet.unhost(self.protocol)
@@ -155,26 +161,144 @@ function storageCLI:listItems(sourceName)
     return nil
 end
 
+---@param name string
+---@return number | nil, number | nil
+function storageCLI:findItem(name)
+    local items = self:listItems()
+    if not items then return nil end
+
+    for item, slots in pairs(items) do
+        local _, itemName = item:match("([^:]+):([^:]+)")
+        if name == itemName then
+            local highestAmountSlot = -1
+            local highestAmount = -1
+
+            for slot, amount in pairs(slots) do
+                if amount > highestAmount then
+                    highestAmountSlot = slot
+                    highestAmount = amount
+                end
+            end
+
+            return highestAmountSlot, highestAmount
+        end
+    end
+
+    return nil
+end
+
 -- extract item from storage chest to output chest
 function storageCLI:cmdExtract(itemName, amount)
+    local fromSlot, maxAmount = self:findItem(itemName)
+    if not fromSlot then
+        print("Item not found: " .. itemName)
+        return
+    end
+
+    if maxAmount < amount then
+        amount = maxAmount
+    end
+
+    local message = {
+        ["command"] = "extract",
+        ["from"] = self.storageChest,
+        ["to"] = self.outputChest,
+        ["fromSlot"] = fromSlot,
+        ["count"] = amount,
+        ["toSlot"] = nil
+    }
+
+    rednet.send(self.host, message, self.protocol)
+
+    local _, resMessage = rednet.receive(self.protocol, self.timeout)
+    if resMessage["success"] then
+        print("Extracted " .. amount .. "x " .. itemName)
+    end
 end
 
 -- put item from input chest to storage chest
 function storageCLI:cmdPut(itemName, amount)
+    local fromSlot, maxAmount = self:findItem(itemName)
+    if maxAmount < amount then
+        amount = maxAmount
+    end
+
+    local message = {
+        ["command"] = "put",
+        ["from"] = self.inputChest,
+        ["to"] = self.storageChest,
+        ["fromSlot"] = fromSlot,
+        ["count"] = amount,
+        ["toSlot"] = nil
+    }
+
+    rednet.send(self.host, message, self.protocol)
+
+    local _, resMessage = rednet.receive(self.protocol, self.timeout)
+    if resMessage["success"] then
+        print("Put " .. amount .. "x " .. itemName .. " into the storage chest")
+    end
 end
 
 -- select chest types
 function storageCLI:cmdSelect(chestType, peripheral)
+    local foundPeripheral = nil
+    local peripherals = self:listPeripherals()
+
+    for i=1, #peripherals do
+        if string.find(peripherals[i], peripheral) then
+            foundPeripheral = peripherals[i]
+        end
+    end
+
+    if not foundPeripheral then
+        print("Could not find peripheral: " .. peripheral)
+        return
+    end
+
+    if chestType == "storage" then
+        self.storageChest = peripheral
+    elseif chestType == "input" then
+        self.inputChest = peripheral
+    elseif chestType == "output" then
+        self.outputChest = peripheral
+    else
+        print("Wrong chest type: " .. chestType)
+    end
 end
 
 -- find items either in storage chest or in given chest type
 function storageCLI:cmdFind(itemName, chestType)
+    local chest = chestType or self.storageChest
+    local items = self:listItems()
+
+    if not items then
+        print("0 results for " .. itemName)
+        return
+    end
+
+    for item, slots in pairs(items) do
+        local _, name = item:match("([^:]+):([^:]+)")
+        if name == itemName then
+            print(#slots .. " results for " .. itemName)
+            for slot, amount in pairs(slots) do
+                print(amount .. "  x in slot " .. slot)
+            end
+
+            return
+        end
+    end
+
+    print("0 results for " .. itemName)
 end
 
 -- list network devices (peripherals)
 function storageCLI:cmdNetwork()
     local peripherals = self:listPeripherals()
-    -- ...
+
+    for i=1, #peripherals do
+        print(peripherals[i])
+    end
 end
 
 function storageCLI:run()
