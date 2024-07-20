@@ -36,7 +36,7 @@ function storageCLI:init()
         Config:command(args)
     else
         self.protocol = Config:get('protocol')
-        self.host = Config:get('serverName')
+        self.serverName = Config:get('serverName')
         self.timeout = Config:get('timeout')
         self.inputChest = nil
         self.outputChest = nil
@@ -44,6 +44,8 @@ function storageCLI:init()
         
         peripheral.find("modem", rednet.open)
         if rednet.isOpen() then
+            self.host = rednet.lookup(self.protocol, self.serverName)
+
             self:prompt()
             print("Connected to " .. self.host .. " with protocol: " .. self.protocol)
             self:detectChests()
