@@ -45,10 +45,15 @@ function storageCLI:init()
         peripheral.find("modem", rednet.open)
         if rednet.isOpen() then
             self.host = rednet.lookup(self.protocol, self.serverName)
-
             self:prompt()
-            print("Connected to " .. self.host .. " with protocol: " .. self.protocol)
-            self:detectChests()
+            
+            if not self.host then
+                print("Could not connect to host: " .. self.serverName .. " with protocol: " .. self.protocol)
+            else
+                print("Connected to " .. self.serverName .. " with protocol: " .. self.protocol)
+                self:detectChests()
+            end
+            
             self:run()
             rednet.unhost(self.protocol)
         else
