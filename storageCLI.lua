@@ -155,7 +155,7 @@ function storageCLI:listItems(sourceName)
     return nil
 end
 
--- extraqct item from storage chest to output chest
+-- extract item from storage chest to output chest
 function storageCLI:cmdExtract(itemName, amount)
 end
 
