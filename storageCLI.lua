@@ -2,7 +2,7 @@ local storageCLI = {}
 local scm = require("./scm")
 local Config = scm:load("config")
 local hFun = scm:load("helperFunctions")
-local args = {...}
+local args = { ... }
 
 local defaultConfig = {
     ["protocol"] = {
@@ -20,6 +20,21 @@ local defaultConfig = {
         ["default"] = 5,
         ["type"] = "number"
     },
+    ["input"] = {
+        ["description"] = "Peripheral name of input chest",
+        ["default"] = "",
+        ["type"] = "string"
+    },
+    ["output"] = {
+        ["description"] = "Peripheral name of output chest",
+        ["default"] = "",
+        ["type"] = "string"
+    },
+    ["storage"] = {
+        ["description"] = "Peripheral name of storage chest",
+        ["default"] = "",
+        ["type"] = "string"
+    },
 }
 
 storageCLI.aliases = {
@@ -29,17 +44,19 @@ storageCLI.aliases = {
     ["f"] = "find",
     ["n"] = "network",
     ["s"] = "select",
-    ["?"] = "help",
+    ["h"] = "help",
+    ["q"] = "quit",
 }
 
 storageCLI.helpCommands = {
-    ["extract"] = "`x <item> <amount>`\nExtract an item with a specific amount from the storage chest into the output chest.",
-    ["put"] = "`p <item> <amount>`\nPuts an item with a specific amount from the input chest into the storage.",
-    ["dump"] = "`d`\nDumps all items of the input chest into the storage.",
+    ["extract"] = "`x <item> <amount>`\nExtract an item with a specific amount from the storage into the output.",
+    ["put"] = "`p <item> <amount>`\nPuts an item with a specific amount from the input into the storage.",
+    ["dump"] = "`d`\nDumps all items from input into the storage.",
     ["find"] = "`f <item> [<chest: input|output|storage (default)>]`\nSearches for substring. Chest is optional.",
     ["network"] = "`n`\nLists all network devices (connected peripherals)",
-    ["select"] = "`s <chest: input|output|storage> <peripheral>`\nSelects a given peripheral as input, output or storage chest.",
-    ["help"] = "`?\nShows this list of commands.`",
+    ["select"] = "`s <chest: input|output|storage> <peripheral>`\nSelects peripheral as input, output or storage.",
+    ["help"] = "`h - Help`",
+    ["quit"] = "`q - Quit`",
 }
 
 function storageCLI:init()
@@ -48,23 +65,25 @@ function storageCLI:init()
     if args[1] == "config" then
         Config:command(args)
     else
-        self.protocol = Config:get('protocol')
-        self.serverName = Config:get('serverName')
-        self.timeout = Config:get('timeout')
-        self.inputChest = nil
-        self.outputChest = nil
-        self.storageChest = nil
-        
+        self.protocol = Config:get("protocol")
+        self.serverName = Config:get("serverName")
+        self.timeout = Config:get("timeout")
+        self.inputChest = Config:get("input") ~= "" and Config:get("input") or nil
+        self.outputChest = Config:get("output") ~= "" and Config:get("output") or nil
+        self.storageChest = Config:get("storage") ~= "" and Config:get("storage") or nil
+
         peripheral.find("modem", rednet.open)
         if rednet.isOpen() then
             self.host = rednet.lookup(self.protocol, self.serverName)
             self:prompt()
-            
+
             if not self.host then
                 print("Could not connect to host: " .. self.serverName .. " with protocol: " .. self.protocol)
             else
                 print("Connected to " .. self.serverName .. " with protocol: " .. self.protocol)
-                self:detectChests()
+                if not (self.inputChest and self.outputChest and self.storageChest) then
+                    self:detectChests()
+                end
             end
 
             self:run()
@@ -86,7 +105,7 @@ function storageCLI:detectChests()
     local controller_count = 0
     local transfer_chest
     local chest_count = 0
-    for i=1, #peripherals do
+    for i = 1, #peripherals do
         if string.find(peripherals[i], "controller") then
             controller = peripherals[i]
             controller_count = controller_count + 1
@@ -96,19 +115,26 @@ function storageCLI:detectChests()
         end
     end
 
-    if controller_count == 1 then
-        self.storageChest = controller
-        print("Found 1 controller and selected it as storage chest.")
-    else
-        print("Could not auto-detect storage chest.")
+    if self.storageChest == nil then
+        if controller_count == 1 then
+            self.storageChest = controller
+            Config:set("storage", self.storageChest)
+            print("Found 1 controller and selected it as storage chest.")
+        else
+            print("Could not auto-detect storage chest.")
+        end
     end
 
-    if chest_count == 1 then
-        self.inputChest = transfer_chest
-        self.outputChest = transfer_chest
-        print("Found 1 chest and set it as in- and output chest.")
-    else
-        print("Could not auto-detect in- and output chest.")
+    if self.inputChest == nil and self.outputChest == nil then
+        if chest_count == 1 then
+            self.inputChest = transfer_chest
+            self.outputChest = transfer_chest
+            Config:set("input", self.inputChest)
+            Config:set("output", self.outputChest)
+            print("Found 1 chest and set it as in- and output chest.")
+        else
+            print("Could not auto-detect in- and output chest.")
+        end
     end
 end
 
@@ -258,7 +284,7 @@ function storageCLI:cmdSelect(chestType, peripheral)
     local foundPeripheral = nil
     local peripherals = self:listPeripherals()
 
-    for i=1, #peripherals do
+    for i = 1, #peripherals do
         if string.find(peripherals[i], peripheral) then
             foundPeripheral = peripherals[i]
         end
@@ -311,7 +337,7 @@ end
 function storageCLI:cmdNetwork()
     local peripherals = self:listPeripherals()
 
-    for i=1, #peripherals do
+    for i = 1, #peripherals do
         print(peripherals[i])
     end
 end
@@ -319,7 +345,7 @@ end
 function storageCLI:cmdDump()
     local items = self:listItems("input")
     local pack = {}
-    
+
     if not items then
         print("Could not find any items in input chest.")
         return
@@ -389,6 +415,8 @@ function storageCLI:run()
             self:cmdNetwork()
         elseif command == "help" or self.aliases[command] == "help" then
             self:cmdHelp()
+        elseif command == "quit" or self.aliases[command] == "quit" then
+            break
         else
             print("Invalid command.")
         end
