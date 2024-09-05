@@ -2,7 +2,7 @@ local storageCLI = {}
 local scm = require("./scm")
 local Config = scm:load("config")
 local hFun = scm:load("helperFunctions")
-local args = {...}
+local args = { ... }
 
 local defaultConfig = {
     ["protocol"] = {
@@ -29,17 +29,19 @@ storageCLI.aliases = {
     ["f"] = "find",
     ["n"] = "network",
     ["s"] = "select",
-    ["?"] = "help",
+    ["h"] = "help",
+    ["q"] = "quit",
 }
 
 storageCLI.helpCommands = {
-    ["extract"] = "`x <item> <amount>`\nExtract an item with a specific amount from the storage chest into the output chest.",
-    ["put"] = "`p <item> <amount>`\nPuts an item with a specific amount from the input chest into the storage.",
-    ["dump"] = "`d`\nDumps all items of the input chest into the storage.",
+    ["extract"] = "`x <item> <amount>`\nExtract an item with a specific amount from the storage into the output.",
+    ["put"] = "`p <item> <amount>`\nPuts an item with a specific amount from the input into the storage.",
+    ["dump"] = "`d`\nDumps all items from input into the storage.",
     ["find"] = "`f <item> [<chest: input|output|storage (default)>]`\nSearches for substring. Chest is optional.",
     ["network"] = "`n`\nLists all network devices (connected peripherals)",
-    ["select"] = "`s <chest: input|output|storage> <peripheral>`\nSelects a given peripheral as input, output or storage chest.",
-    ["help"] = "`?\nShows this list of commands.`",
+    ["select"] = "`s <chest: input|output|storage> <peripheral>`\nSelects peripheral as input, output or storage.",
+    ["help"] = "`h - Help`",
+    ["quit"] = "`q - Quit`",
 }
 
 function storageCLI:init()
@@ -54,12 +56,12 @@ function storageCLI:init()
         self.inputChest = nil
         self.outputChest = nil
         self.storageChest = nil
-        
+
         peripheral.find("modem", rednet.open)
         if rednet.isOpen() then
             self.host = rednet.lookup(self.protocol, self.serverName)
             self:prompt()
-            
+
             if not self.host then
                 print("Could not connect to host: " .. self.serverName .. " with protocol: " .. self.protocol)
             else
@@ -86,7 +88,7 @@ function storageCLI:detectChests()
     local controller_count = 0
     local transfer_chest
     local chest_count = 0
-    for i=1, #peripherals do
+    for i = 1, #peripherals do
         if string.find(peripherals[i], "controller") then
             controller = peripherals[i]
             controller_count = controller_count + 1
@@ -258,7 +260,7 @@ function storageCLI:cmdSelect(chestType, peripheral)
     local foundPeripheral = nil
     local peripherals = self:listPeripherals()
 
-    for i=1, #peripherals do
+    for i = 1, #peripherals do
         if string.find(peripherals[i], peripheral) then
             foundPeripheral = peripherals[i]
         end
@@ -311,7 +313,7 @@ end
 function storageCLI:cmdNetwork()
     local peripherals = self:listPeripherals()
 
-    for i=1, #peripherals do
+    for i = 1, #peripherals do
         print(peripherals[i])
     end
 end
@@ -319,7 +321,7 @@ end
 function storageCLI:cmdDump()
     local items = self:listItems("input")
     local pack = {}
-    
+
     if not items then
         print("Could not find any items in input chest.")
         return
@@ -389,6 +391,8 @@ function storageCLI:run()
             self:cmdNetwork()
         elseif command == "help" or self.aliases[command] == "help" then
             self:cmdHelp()
+        elseif command == "quit" or self.aliases[command] == "quit" then
+            break
         else
             print("Invalid command.")
         end

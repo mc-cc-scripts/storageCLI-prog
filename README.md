@@ -38,5 +38,5 @@ s <chest: input|output|storage> <peripheral>
 # help
 Shows this list of commands.
 ```
-?
+h
 ```
