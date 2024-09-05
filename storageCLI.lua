@@ -20,6 +20,21 @@ local defaultConfig = {
         ["default"] = 5,
         ["type"] = "number"
     },
+    ["input"] = {
+        ["description"] = "Peripheral name of input chest",
+        ["default"] = "",
+        ["type"] = "string"
+    },
+    ["output"] = {
+        ["description"] = "Peripheral name of output chest",
+        ["default"] = "",
+        ["type"] = "string"
+    },
+    ["storage"] = {
+        ["description"] = "Peripheral name of storage chest",
+        ["default"] = "",
+        ["type"] = "string"
+    },
 }
 
 storageCLI.aliases = {
@@ -50,12 +65,12 @@ function storageCLI:init()
     if args[1] == "config" then
         Config:command(args)
     else
-        self.protocol = Config:get('protocol')
-        self.serverName = Config:get('serverName')
-        self.timeout = Config:get('timeout')
-        self.inputChest = nil
-        self.outputChest = nil
-        self.storageChest = nil
+        self.protocol = Config:get("protocol")
+        self.serverName = Config:get("serverName")
+        self.timeout = Config:get("timeout")
+        self.inputChest = Config:get("input") ~= "" and Config:get("input") or nil
+        self.outputChest = Config:get("output") ~= "" and Config:get("output") or nil
+        self.storageChest = Config:get("storage") ~= "" and Config:get("storage") or nil
 
         peripheral.find("modem", rednet.open)
         if rednet.isOpen() then
@@ -66,7 +81,9 @@ function storageCLI:init()
                 print("Could not connect to host: " .. self.serverName .. " with protocol: " .. self.protocol)
             else
                 print("Connected to " .. self.serverName .. " with protocol: " .. self.protocol)
-                self:detectChests()
+                if not (self.inputChest and self.outputChest and self.storageChest) then
+                    self:detectChests()
+                end
             end
 
             self:run()
@@ -98,19 +115,26 @@ function storageCLI:detectChests()
         end
     end
 
-    if controller_count == 1 then
-        self.storageChest = controller
-        print("Found 1 controller and selected it as storage chest.")
-    else
-        print("Could not auto-detect storage chest.")
+    if self.storageChest == nil then
+        if controller_count == 1 then
+            self.storageChest = controller
+            Config:set("storage", self.storageChest)
+            print("Found 1 controller and selected it as storage chest.")
+        else
+            print("Could not auto-detect storage chest.")
+        end
     end
 
-    if chest_count == 1 then
-        self.inputChest = transfer_chest
-        self.outputChest = transfer_chest
-        print("Found 1 chest and set it as in- and output chest.")
-    else
-        print("Could not auto-detect in- and output chest.")
+    if self.inputChest == nil and self.outputChest == nil then
+        if chest_count == 1 then
+            self.inputChest = transfer_chest
+            self.outputChest = transfer_chest
+            Config:set("input", self.inputChest)
+            Config:set("output", self.outputChest)
+            print("Found 1 chest and set it as in- and output chest.")
+        else
+            print("Could not auto-detect in- and output chest.")
+        end
     end
 end
 
