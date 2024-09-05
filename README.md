@@ -40,3 +40,9 @@ Shows this list of commands.
 ```
 h
 ```
+
+# quit
+Quits the program.
+```
+q
+```
