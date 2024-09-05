@@ -297,10 +297,13 @@ function storageCLI:cmdSelect(chestType, peripheral)
 
     if chestType == "storage" then
         self.storageChest = peripheral
+        Config:set("storage", self.storageChest)
     elseif chestType == "input" then
         self.inputChest = peripheral
+        Config:set("input", self.inputChest)
     elseif chestType == "output" then
         self.outputChest = peripheral
+        Config:set("output", self.outputChest)
     else
         print("Wrong chest type: " .. chestType)
     end
