@@ -85,7 +85,7 @@ function storageCLI:init()
                     self:detectChests()
                 end
             end
-
+            self:cmdHelp()
             self:run()
             rednet.unhost(self.protocol)
         else
