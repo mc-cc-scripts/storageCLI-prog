@@ -85,7 +85,6 @@ function storageCLI:init()
                     self:detectChests()
                 end
             end
-
             self:run()
             rednet.unhost(self.protocol)
         else
@@ -421,7 +420,7 @@ function storageCLI:run()
         elseif command == "quit" or self.aliases[command] == "quit" then
             break
         else
-            print("Invalid command.")
+            print("Bad cmd. Try 'h' for help")
         end
     end
 end
